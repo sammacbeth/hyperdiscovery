@@ -97,6 +97,7 @@ class Hyperdiscovery extends EventEmitter {
     reEmit('redundant-connection')
 
     this._replicatingFeeds = new Map()
+    this._feedOptions = new Map();
 
     if (opts.autoListen !== false) {
       this.listen()
@@ -165,7 +166,8 @@ class Hyperdiscovery extends EventEmitter {
       }
 
       // create the replication stream
-      feed.replicate({ stream, live: true })
+      const feedOpts = self._feedOptions.get(dkeyStr) || {};
+      feed.replicate({ stream, live: true, ...feedOpts })
       if (stream.destroyed) return // in case the stream was destroyed during setup
 
       // track the stream
@@ -199,6 +201,7 @@ class Hyperdiscovery extends EventEmitter {
     const key = datEncoding.toStr(feed.key)
     const discoveryKey = datEncoding.toStr(feed.discoveryKey)
     this._replicatingFeeds.set(discoveryKey, feed)
+    this._feedOptions.set(discoveryKey, opts || {})
 
     this.rejoin(feed.discoveryKey, opts)
     this.emit('join', { key, discoveryKey })
@@ -227,6 +230,7 @@ class Hyperdiscovery extends EventEmitter {
     }
     this._swarm.leave(feed.discoveryKey)
     this.emit('leave', { key: feed.key.toString('hex'), discoveryKey: dKeyStr })
+    this._feedOptions.delete(dKeyStr);
   }
 
   close () {
